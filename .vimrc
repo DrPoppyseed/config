@@ -4,13 +4,9 @@ call plug#begin()
 Plug 'junegunn/fzf', { 'dir': '~/.fzf', 'do': './install --all' } 
 Plug 'junegunn/fzf.vim'
 Plug 'neoclide/coc.nvim', { 'branch': 'release' }
-Plug 'tpope/vim-sensible'
 Plug 'tpope/vim-commentary' " Commenting like in IDEs
 Plug 'tpope/vim-sleuth' " Smart tab-space conversion
 Plug 'tpope/vim-unimpaired' " Buffer selection shortcuts
-Plug 'tpope/vim-vinegar' " Better netrw UI
-Plug 'tpope/vim-fugitive'
-Plug 'tpope/vim-surround'
 Plug 'nvim-treesitter/nvim-treesitter', { 'do': ':TSUpdate' }
 Plug 'cohama/lexima.vim' " Auto close parentheses 
 Plug 'jeffkreeftmeijer/vim-numbertoggle'
@@ -20,8 +16,16 @@ Plug 'nvim-lua/popup.nvim'
 Plug 'nvim-lua/plenary.nvim'
 Plug 'nvim-telescope/telescope.nvim'
 Plug 'nvim-telescope/telescope-fzy-native.nvim'
+Plug 'yuki-yano/fzf-preview.vim', { 'do': { -> fzf#install() } }
 Plug 'christoomey/vim-tmux-navigator' " seamless navigation between tmux & vim
 Plug 'jlanzarotta/bufexplorer' " buffer explorer
+Plug 'thinca/vim-quickrun' " run commands faster
+Plug 'lambdalisue/vim-quickrun-neovim-job' " run commands in the background
+Plug 'machakann/vim-sandwich' " a better vim-surround
+Plug 'haya14busa/vim-edgemotion' " faster movement across the keyboard
+Plug 'vim-denops/denops.vim' " Enable deno in vim/nvim
+Plug 'lambdalisue/gin.vim' " Handle git smarter
+Plug 'MunifTanjim/nui.nvim' " UI component library for lua 
 
 " decorative plugins
 Plug 'ryanoasis/vim-devicons'
@@ -49,6 +53,7 @@ Plug 'jparise/vim-graphql'
 Plug 'othree/yajs.vim', {'for': ['javascript', 'javascript.jsx']}
 Plug 'othree/es.next.syntax.vim', {'for': ['javascript', 'javascript.jsx']}
 Plug 'othree/javascript-libraries-syntax.vim', {'for': ['javascript', 'javascript.jsx']}
+Plug 'yuki-yano/tsnip.nvim' " snippet library
 
 " @language html
 Plug 'othree/html5.vim'
@@ -61,6 +66,9 @@ Plug 'tjdevries/nlua.nvim'
 Plug 'nvim-lua/completion-nvim'
 Plug 'euclidianAce/BetterLua.vim'
 Plug 'tjdevries/manillua.nvim'
+
+" @language rust
+Plug 'rust-lang/rust.vim'
 
 " @experimental 
 Plug 'SirVer/ultisnips' " try out snippets
@@ -77,7 +85,7 @@ set encoding=UTF-8
 let MYVIMRC='~/.vimrc'
 
 "" Leader
-let g:mapleader=","
+let g:mapleader=";"
 
 "" Keymappings
 inoremap jk <Esc>
@@ -259,6 +267,18 @@ if isdirectory('./node_modules') && isdirectory('./node_modules/eslint')
 endif
 
 
+"" @plugin coc.nvim
+"" Use Eslint settings when filetype is typescript
+function! s:coc_typescript_settings() abort
+  nnoremap <silent> <buffer> [dev]f :<C-u>CocCommand eslint.executeAutofix<CR>:CocCommand prettier.formatFile<CR>
+endfunction
+
+augroup coc_ts
+  autocmd!
+  autocmd FileType typescript,typescriptreact call <SID>coc_typescript_settings()
+augroup END
+
+
 "" @brew ripgrep
 "" rg があれば使う
 if executable('rg')
@@ -320,6 +340,10 @@ autocmd CursorHold * silent call CocActionAsync('highlight')
 "" @plugin coc.nvim
 "" Symbol renaming
 nmap <leader>rn <Plug>(coc-rename)
+
+"" @plugin coc.nvim
+"" Enable code action 
+nmap <leader>ca <Plug>(coc-codeaction-selected)iw
 
 "" @plugin coc.nvim
 "" Formatting selected code
@@ -481,13 +505,60 @@ command! -bang -nargs=* Rg
 command! -bang -nargs=? -complete=dir Files
   \ call fzf#vim#files(<q-args>, fzf#vim#with_preview(), <bang>0)
 
-"" @plugins fzf-preview
-" Find files using Telescope command-line sugar.
-nnoremap <leader>, <cmd>Telescope find_files hidden=true<cr>
-nnoremap <leader>fg <cmd>Telescope live_grep hidden=true<cr>
-nnoremap <leader>fb <cmd>Telescope buffers hidden=true<cr>
-nnoremap <leader>fh <cmd>Telescope help_tags hidden=true<cr>
+"" @plugins vim-edgemotion
+"" Key mappings
+map <C-j> <Plug>(edgemotion-j)
+map <C-k> <Plug>(edgemotion-k)
 
 "" @plugins toggleterm.nvim
 "" @keybindings toggle terminal open/close with shortcut
 nnoremap <C-t> <cmd>ToggleTerm<cr>
+
+"" @plugins quick-run
+"" @configs configure quick-run plugin
+let g:quickrun_config = {
+\ '_' : {
+\   'outputter': 'error',
+\   'outputter/error/success': 'buffer',
+\   'outputter/error/error':   'quickfix',
+\   'outputter/buffer/opener': ':botright 15split',
+\   'outputter/buffer/close_on_empty' : 1,
+\ },
+\ 'tsc' : {
+\   'command': 'tsc',
+\   'exec': ['yarn run --silent %C --project . --noEmit --incremental --tsBuildInfoFile .git/.tsbuildinfo 2>/dev/null'],
+\   'outputter': 'quickfix',
+\   'outputter/quickfix/errorformat': '%+A %#%f %#(%l\,%c): %m,%C%m',
+\ },
+\ 'eslint': {
+\   'command': 'eslint',
+\   'exec': ['yarn run --silent %C --format unix --ext .ts,.tsx %a 2>/dev/null'],
+\   'outputter': 'quickfix',
+\   'outputter/quickfix/errorformat': '%f:%l:%c:%m,%-G%.%#',
+\ },
+\ }
+
+let g:quickrun_config._.runner = 'neovim_job'
+
+"" @plugin fzf-preview
+"" Key mappings
+nnoremap <silent> <C-p>  :<C-u>CocCommand fzf-preview.FromResources buffer project_mru project<CR>
+nnoremap <silent> <leader>s  :<C-u>CocCommand fzf-preview.GitStatus<CR>
+nnoremap <silent> <leader>gg :<C-u>CocCommand fzf-preview.GitActions<CR>
+nnoremap <silent> <leader>b  :<C-u>CocCommand fzf-preview.Buffers<CR>
+nnoremap          <leader>f  :<C-u>CocCommand fzf-preview.ProjectGrep --add-fzf-arg=--exact --add-fzf-arg=--no-sort<Space>
+xnoremap          <leader>f  "sy:CocCommand fzf-preview.ProjectGrep --add-fzf-arg=--exact --add-fzf-arg=--no-sort<Space>-F<Space>"<C-r>=substitute(substitute(@s, '\n', '', 'g'), '/', '\\/', 'g')<CR>"
+
+nnoremap <silent> <leader>q  :<C-u>CocCommand fzf-preview.CocCurrentDiagnostics<CR>
+" nnoremap <silent> <leader>rf :<C-u>CocCommand fzf-preview.CocReferences<CR>
+nnoremap <silent> <leader>d  :<C-u>CocCommand fzf-preview.CocDefinition<CR>
+nnoremap <silent> <leader>t  :<C-u>CocCommand fzf-preview.CocTypeDefinition<CR>
+nnoremap <silent> <leader>o  :<C-u>CocCommand fzf-preview.CocOutline --add-fzf-arg=--exact --add-fzf-arg=--no-sort<CR>
+
+"" @plugin telescope.nvim
+"" "Find files using Telescope command-line sugar.
+nnoremap <leader><leader> <cmd>Telescope find_files<cr>
+nnoremap <leader>l <cmd>Telescope live_grep<cr>
+nnoremap <leader>fb <cmd>Telescope buffers<cr>
+nnoremap <leader>fh <cmd>Telescope help_tags<cr>
+nnoremap <leader>rf <cmd>Telescope lsp_references<cr>
